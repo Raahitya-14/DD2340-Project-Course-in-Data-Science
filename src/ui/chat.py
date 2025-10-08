@@ -11,8 +11,9 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 from agent import SionnaAgent
-from sionna_tools import simulate_constellation, simulate_ber
+from sionna_tools import simulate_constellation, simulate_ber, simulate_radio_map
 from utils.plotting import plot_constellation, plot_ber
+from PIL import Image
 
 class ChatInterface:
     def __init__(self):
@@ -44,7 +45,11 @@ class ChatInterface:
                     response += f"Calculated BER for {sim_result['modulation']}\n"
                     plots.append(plot_ber(sim_result))
                 
-
+                elif tool_name == "simulate_radio_map":
+                    sim_result = simulate_radio_map(**params)
+                    response += f"Generated radio map: {sim_result['plot_path']}\n"
+                    if os.path.exists(sim_result['plot_path']):
+                        plots.append(Image.open(sim_result['plot_path']))
             
             return response, plots[0] if plots else None
         
@@ -74,12 +79,13 @@ class ChatInterface:
                             "Simulate 64-QAM constellation at -5 and 15 dB",
                             "Compare QPSK BER in AWGN and Rayleigh at 0, 5, 10 dB",
                             "Show 16-QAM constellation at 0 dB",
+                            "Simulate transmitter at (0,0,0) and receiver at (100,0,0)",
                         ],
                         inputs=msg
                     )
                 
                 with gr.Column(scale=1):
-                    plot_output = gr.Plot(label="Simulation Result")
+                    plot_output = gr.Image(label="Simulation Result", type="pil")
             
             def respond(message, chat_history):
                 text = message["text"] if isinstance(message, dict) else message

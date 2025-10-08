@@ -55,6 +55,19 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": []
             }
+        ),
+        Tool(
+            name="simulate_radio_map",
+            description="Generate radio coverage map using ray tracing with transmitter and receiver positions.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "tx_position": {"type": "array", "items": {"type": "number"}, "default": [0, 0, 0]},
+                    "rx_position": {"type": "array", "items": {"type": "number"}, "default": [100, 0, 0]},
+                    "metric": {"type": "string", "enum": ["rss", "path_gain", "sinr"], "default": "rss"}
+                },
+                "required": []
+            }
         )
     ]
 
@@ -78,6 +91,10 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     
     elif name == "get_modulation_info":
         result = sionna_tools.get_modulation_info(**arguments)
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    
+    elif name == "simulate_radio_map":
+        result = sionna_tools.simulate_radio_map(**arguments)
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
     
     else:

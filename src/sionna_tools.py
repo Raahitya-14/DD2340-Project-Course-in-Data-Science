@@ -87,6 +87,25 @@ def list_available_modulations():
     """List supported modulation schemes"""
     return ["qam", "pam", "psk"]
 
+def simulate_radio_map(tx_position=[0,0,0], rx_position=[100,0,0], metric="rss"):
+    """Generate radio coverage map using ray tracing (runs external script)"""
+    import subprocess
+    import os
+    
+    script_path = os.path.join(os.path.dirname(__file__), "..", "scripts", "run_radiomap.py")
+    result = subprocess.run(["python3", script_path, metric, 
+                           str(tx_position[0]), str(tx_position[1]), str(tx_position[2]),
+                           str(rx_position[0]), str(rx_position[1]), str(rx_position[2])],
+                          capture_output=True, text=True)
+    
+    return {
+        "tx_position": tx_position,
+        "rx_position": rx_position,
+        "metric": metric,
+        "output": result.stdout,
+        "plot_path": f"outputs/radiomap_{metric}.png"
+    }
+
 def list_available_tools():
     """List all available simulation tools"""
     return {
