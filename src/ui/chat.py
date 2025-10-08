@@ -14,6 +14,7 @@ from agent import SionnaAgent
 from sionna_tools import simulate_constellation, simulate_ber, simulate_radio_map
 from utils.plotting import plot_constellation, plot_ber
 from PIL import Image
+import io
 
 class ChatInterface:
     def __init__(self):
@@ -38,12 +39,20 @@ class ChatInterface:
                 if tool_name == "simulate_constellation":
                     sim_result = simulate_constellation(**params)
                     response += f"Generated {sim_result['modulation']} constellation\n"
-                    plots.append(plot_constellation(sim_result))
+                    fig = plot_constellation(sim_result)
+                    buf = io.BytesIO()
+                    fig.savefig(buf, format='png')
+                    buf.seek(0)
+                    plots.append(Image.open(buf))
                 
                 elif tool_name == "simulate_ber":
                     sim_result = simulate_ber(**params)
                     response += f"Calculated BER for {sim_result['modulation']}\n"
-                    plots.append(plot_ber(sim_result))
+                    fig = plot_ber(sim_result)
+                    buf = io.BytesIO()
+                    fig.savefig(buf, format='png')
+                    buf.seek(0)
+                    plots.append(Image.open(buf))
                 
                 elif tool_name == "simulate_radio_map":
                     sim_result = simulate_radio_map(**params)
