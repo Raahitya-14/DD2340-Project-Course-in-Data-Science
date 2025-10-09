@@ -22,7 +22,7 @@ This will run example tasks:
 ## Running the MCP Server
 
 ```bash
-python run_server.py
+python3 run_server.py
 ```
 
 The server exposes 4 tools via stdio:

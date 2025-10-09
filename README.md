@@ -39,27 +39,27 @@ pip install -r requirements.txt
 echo 'ANTHROPIC_API_KEY=sk-ant-your-key' > .env
 
 # 3. Launch chat interface
-python app.py
+python3 app.py
 ```
 
 ## Usage
 
 ### Chat Interface (Recommended)
 ```bash
-python app.py
+python3 app.py
 ```
 Opens web interface at http://localhost:7860
 
 ### Command Line
 ```bash
 # Test agent
-python scripts/run_agent.py
+python3 scripts/run_agent.py
 
 # Run with plots
-python scripts/run_simulation.py "Your task here"
+python3 scripts/run_simulation.py "Your task here"
 
 # MCP server
-python scripts/run_server.py
+python3 scripts/run_server.py
 ```
 
 ### Programmatic

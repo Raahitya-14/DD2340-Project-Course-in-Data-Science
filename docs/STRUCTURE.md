@@ -67,12 +67,12 @@ dd2340_project/
 
 ### 1. Interactive (Web UI)
 ```bash
-python app.py
+python3 app.py
 ```
 
 ### 2. Command Line
 ```bash
-python scripts/run_simulation.py "Your task"
+python3 scripts/run_simulation.py "Your task"
 ```
 
 ### 3. Programmatic
