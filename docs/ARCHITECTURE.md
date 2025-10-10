@@ -112,29 +112,19 @@ Agent                    MCP Server              Sionna Tools
 ## Key Design Decisions
 
 ### 1. HTTP-Based MCP Server
-**Why:** Simpler than stdio MCP protocol, easier to debug
-**How:** Flask server on port 5001, REST API for tools
-**Trade-off:** Extra HTTP overhead but more reliable
+Flask server on port 5001 provides REST API for tool discovery and execution. Agent communicates via HTTP requests instead of stdio.
 
 ### 2. Subprocess for Ray Tracing
-**Why:** Mitsuba (used by Sionna RT) causes segfaults when imported in same process
-**How:** `subprocess.run()` launches separate Python process
-**Trade-off:** Slower but stable
+Mitsuba causes segfaults when imported in the main process, so ray tracing runs in a separate subprocess that saves results to disk.
 
 ### 3. Agent-Based Architecture
-**Why:** Natural language interface for non-experts
-**How:** Claude API interprets tasks → generates tool calls via MCP
-**Trade-off:** Requires API key, network latency
+Claude API interprets natural language tasks and generates tool calls. Agent fetches available tools from MCP server and executes them via HTTP.
 
 ### 4. Matplotlib → PIL Conversion
-**Why:** Gradio gr.Image only accepts PIL images
-**How:** Save matplotlib figure to BytesIO → load as PIL
-**Trade-off:** Extra conversion step
+Gradio requires PIL images, so matplotlib figures are saved to BytesIO buffer and loaded as PIL images before display.
 
 ### 5. Complex Number Serialization
-**Why:** JSON doesn't support complex numbers
-**How:** Convert to [real, imag] lists in MCP server, reconstruct in client
-**Trade-off:** Extra conversion but maintains compatibility
+JSON doesn't support complex numbers, so they're converted to [real, imag] lists in the MCP server and reconstructed in the client.
 
 ## Dependencies Between Files
 

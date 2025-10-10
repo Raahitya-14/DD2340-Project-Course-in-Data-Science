@@ -49,6 +49,14 @@ def list_tools():
                         "metric": {"type": "string", "enum": ["rss", "path_gain", "sinr"], "default": "rss"}
                     }
                 }
+            },
+            {
+                "name": "list_available_tools",
+                "description": "List all available simulation tools and their descriptions",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {}
+                }
             }
         ]
     })
@@ -71,6 +79,8 @@ def call_tool():
             result = sionna_tools.simulate_ber(**arguments)
         elif tool_name == "simulate_radio_map":
             result = sionna_tools.simulate_radio_map(**arguments)
+        elif tool_name == "list_available_tools":
+            result = sionna_tools.list_available_tools()
         else:
             return jsonify({"error": f"Unknown tool: {tool_name}"}), 400
         

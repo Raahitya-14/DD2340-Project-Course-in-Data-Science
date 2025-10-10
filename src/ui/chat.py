@@ -62,6 +62,11 @@ class ChatInterface:
                     response += f"Generated radio map: {sim_result['plot_path']}\n"
                     if os.path.exists(sim_result['plot_path']):
                         plots.append(Image.open(sim_result['plot_path']))
+                
+                elif tool_name == "list_available_tools":
+                    response += "**Available Tools:**\n"
+                    for tool, desc in sim_result.items():
+                        response += f"- **{tool}**: {desc}\n"
             
             return response, plots[0] if plots else None
         
@@ -83,13 +88,13 @@ class ChatInterface:
                     )
                     
                     with gr.Row():
-                        submit = gr.Button("Run Simulation", variant="primary")
+                        submit = gr.Button("Run it Up!", variant="primary")
                         clear = gr.Button("Clear")
                     
                     gr.Examples(
                         examples=[
                             "Simulate 64-QAM constellation at -5 and 15 dB",
-                            "Compare QPSK BER in AWGN and Rayleigh at 0, 5, 10 dB",
+                            "Compare QPSK BER in AWGN and Rayleigh at -5, 15 dB",
                             "Show 16-QAM constellation at 0 dB",
                             "Simulate transmitter at (0,0,0) and receiver at (100,0,0)",
                         ],
