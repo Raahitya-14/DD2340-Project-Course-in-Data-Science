@@ -11,7 +11,6 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 from agent import SionnaAgent
-from sionna_tools import simulate_constellation, simulate_ber, simulate_radio_map
 from utils.plotting import plot_constellation, plot_ber
 from PIL import Image
 import io
@@ -36,9 +35,15 @@ class ChatInterface:
                 response += f"**Tool:** {tool_name}\n"
                 response += f"**Parameters:** {json.dumps(params, indent=2)}\n\n"
                 
+                sim_result = self.agent.execute_tool(tool_name, params)
+                
                 if tool_name == "simulate_constellation":
-                    sim_result = simulate_constellation(**params)
                     response += f"Generated {sim_result['modulation']} constellation\n"
+                    # Convert lists back to complex numbers
+                    import numpy as np
+                    sim_result['constellation'] = np.array([complex(x[0], x[1]) for x in sim_result['constellation']])
+                    for snr in sim_result['snr_levels']:
+                        sim_result['snr_levels'][snr] = np.array([complex(x[0], x[1]) for x in sim_result['snr_levels'][snr]])
                     fig = plot_constellation(sim_result)
                     buf = io.BytesIO()
                     fig.savefig(buf, format='png')
@@ -46,7 +51,6 @@ class ChatInterface:
                     plots.append(Image.open(buf))
                 
                 elif tool_name == "simulate_ber":
-                    sim_result = simulate_ber(**params)
                     response += f"Calculated BER for {sim_result['modulation']}\n"
                     fig = plot_ber(sim_result)
                     buf = io.BytesIO()
@@ -55,7 +59,6 @@ class ChatInterface:
                     plots.append(Image.open(buf))
                 
                 elif tool_name == "simulate_radio_map":
-                    sim_result = simulate_radio_map(**params)
                     response += f"Generated radio map: {sim_result['plot_path']}\n"
                     if os.path.exists(sim_result['plot_path']):
                         plots.append(Image.open(sim_result['plot_path']))
