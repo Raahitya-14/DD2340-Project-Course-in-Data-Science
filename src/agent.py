@@ -64,7 +64,7 @@ Guidelines:
 
         server_script = str(Path(__file__).parent / "mcp_http_server.py")
         self.mcp_process = subprocess.Popen(
-            ["python", server_script],
+            ["python3", server_script],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
