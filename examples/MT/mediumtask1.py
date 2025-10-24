@@ -4,15 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def simulate_ber_mimo(num_tx_ant=1, num_rx_ant=1, num_bits=100000):
-    """
-    Simulate BER for MIMO Rayleigh fading channel with QPSK modulation.
-    Args:
-        num_tx_ant: number of transmit antennas
-        num_rx_ant: number of receive antennas
-        num_bits: total bits to transmit
-    Returns:
-        ber_dict: dictionary mapping SNR(dB) -> BER
-    """
+
     # QPSK constellation
     #const_points = tf.constant([1+1j, 1-1j, -1+1j, -1-1j], dtype=tf.complex64) / tf.sqrt(2.0)
     const_points = tf.constant([1 + 1j, 1 - 1j, -1 + 1j, -1 - 1j], dtype=tf.complex64) / tf.cast(tf.sqrt(2.0),
@@ -29,32 +21,27 @@ def simulate_ber_mimo(num_tx_ant=1, num_rx_ant=1, num_bits=100000):
 
         num_symbols = num_bits // bits_per_symbol
 
-        # Generate random QPSK symbols
         idx = tf.random.uniform([num_symbols], 0, 4, dtype=tf.int32)
         tx = tf.gather(const_points, idx)  # shape [num_symbols]
 
-        # Expand to multiple transmit antennas
+
         tx = tf.tile(tx[:, None], [1, num_tx_ant])  # [num_symbols, num_tx_ant]
 
-        # Rayleigh fading channel
+
         h_real = tf.random.normal([num_symbols, num_rx_ant, num_tx_ant], dtype=tf.float32)
         h_imag = tf.random.normal([num_symbols, num_rx_ant, num_tx_ant], dtype=tf.float32)
-        #h = tf.complex(h_real, h_imag) / tf.sqrt(2.0)
+
         h = tf.complex(h_real, h_imag) / tf.cast(tf.sqrt(2.0), tf.complex64)
 
-        # ✅ Proper complex Gaussian noise
+
         noise_real = tf.random.normal([num_symbols, num_rx_ant], dtype=tf.float32)
         noise_imag = tf.random.normal([num_symbols, num_rx_ant], dtype=tf.float32)
         noise = tf.complex(noise_real, noise_imag) * tf.cast(tf.sqrt(no / 2), tf.complex64)
 
 
-        # 然后使用矩阵乘法替代 einsum，更稳健
         tx = tf.reshape(tx, [num_symbols, num_tx_ant])
         y = tf.squeeze(tf.matmul(h, tx[:, :, None]), axis=-1) + noise  # [num_symbols, num_rx_ant]
-        # Received signal
-        #y = tf.einsum('ijk,ik->ij', h, tx[:, 0]) + noise  # [num_symbols, num_rx_ant]
 
-        # Simple receiver (MRC if multiple Rx)
         h_conj = tf.math.conj(h[:, :, 0])
         #combined = tf.reduce_sum(h_conj * y, axis=1) / tf.reduce_sum(tf.abs(h[:, :, 0])**2, axis=1)
         combined = tf.reduce_sum(h_conj * y, axis=1) / tf.cast(tf.reduce_sum(tf.abs(h[:, :, 0]) ** 2, axis=1),
