@@ -11,7 +11,7 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 from agent import SionnaAgent
-from utils.plotting import plot_constellation, plot_ber
+from utils.plotting import plot_constellation, plot_ber, plot_ber_mimo, plot_mimo_comparison
 from PIL import Image
 import io
 
@@ -71,6 +71,23 @@ class ChatInterface:
                     if os.path.exists(sim_result['plot_path']):
                         plots.append(Image.open(sim_result['plot_path']))
                 
+                elif tool_name == "simulate_ber_mimo":
+                    config = f"{params.get('num_tx_ant', 1)}x{params.get('num_rx_ant', 1)}"
+                    response += f"Calculated MIMO BER for {config} configuration\n"
+                    fig = plot_ber_mimo(sim_result, f"MIMO ({config})")
+                    buf = io.BytesIO()
+                    fig.savefig(buf, format='png')
+                    buf.seek(0)
+                    plots.append(Image.open(buf))
+                
+                elif tool_name == "compare_mimo_performance":
+                    response += f"Compared SISO ({sim_result['siso']['config']}) vs MIMO ({sim_result['mimo']['config']})\n"
+                    fig = plot_mimo_comparison(sim_result)
+                    buf = io.BytesIO()
+                    fig.savefig(buf, format='png')
+                    buf.seek(0)
+                    plots.append(Image.open(buf))
+                
                 elif tool_name == "list_available_tools":
                     response += "**Available Tools:**\n"
                     for tool, desc in sim_result.items():
@@ -105,6 +122,7 @@ class ChatInterface:
                             "Compare QPSK BER in AWGN and Rayleigh at -5, 15 dB",
                             "Show 16-QAM constellation at 0 dB",
                             "Simulate transmitter at (0,0,0) and receiver at (100,0,0)",
+                            "Compare SISO vs MIMO performance with BER plots"
                         ],
                         inputs=msg
                     )

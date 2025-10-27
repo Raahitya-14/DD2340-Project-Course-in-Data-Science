@@ -5,7 +5,7 @@ AI agent for automating wireless communication simulations using Sionna and Mode
 ## Project Structure
 
 ```
-dd2340_project/
+DD2340-Project-Course-in-Data-Science/
 ├── src/                    # Core source code
 │   ├── agent.py           # AI agent with MCP client
 │   ├── mcp_http_server.py # MCP HTTP server
@@ -35,10 +35,12 @@ dd2340_project/
 pip install -r requirements.txt
 
 # 2. Set API key in .env file
-echo 'ANTHROPIC_API_KEY=sk-ant-your-key' > .env
+echo 'ANTHROPIC_API_KEY=your-api-key-here' > .env
 
 # 3. Launch chat interface
 python3 app.py
+# OR use the launcher script
+./start.sh
 ```
 
 ## Usage
@@ -46,6 +48,8 @@ python3 app.py
 ### Chat Interface (Recommended)
 ```bash
 python3 app.py
+# OR
+./start.sh
 ```
 Opens web interface at http://localhost:7860
 

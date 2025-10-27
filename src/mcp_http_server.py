@@ -57,6 +57,30 @@ def list_tools():
                     "type": "object",
                     "properties": {}
                 }
+            },
+            {
+                "name": "simulate_ber_mimo",
+                "description": "Simulate BER for MIMO Rayleigh fading channel with QPSK modulation",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "num_tx_ant": {"type": "integer", "minimum": 1, "default": 1},
+                        "num_rx_ant": {"type": "integer", "minimum": 1, "default": 1},
+                        "num_bits": {"type": "integer", "default": 100000}
+                    }
+                }
+            },
+            {
+                "name": "compare_mimo_performance",
+                "description": "Compare SISO vs MIMO performance by running both simulations and plotting BER comparison",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "siso_config": {"type": "array", "items": {"type": "integer"}, "default": [1, 1]},
+                        "mimo_config": {"type": "array", "items": {"type": "integer"}, "default": [2, 2]},
+                        "num_bits": {"type": "integer", "default": 100000}
+                    }
+                }
             }
         ]
     })
@@ -81,6 +105,13 @@ def call_tool():
             result = sionna_tools.simulate_radio_map(**arguments)
         elif tool_name == "list_available_tools":
             result = sionna_tools.list_available_tools()
+        elif tool_name == "simulate_ber_mimo":
+            result = sionna_tools.simulate_ber_mimo(**arguments)
+            result = {int(k): float(v) for k, v in result.items()}
+        elif tool_name == "compare_mimo_performance":
+            result = sionna_tools.compare_mimo_performance(**arguments)
+            result["siso"]["ber"] = {int(k): float(v) for k, v in result["siso"]["ber"].items()}
+            result["mimo"]["ber"] = {int(k): float(v) for k, v in result["mimo"]["ber"].items()}
         else:
             return jsonify({"error": f"Unknown tool: {tool_name}"}), 400
         

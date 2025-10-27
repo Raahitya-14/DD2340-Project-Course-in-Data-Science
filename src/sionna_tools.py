@@ -87,17 +87,13 @@ def simulate_ber(modulation="qam", bits_per_symbol=2, snr_db_list=[-5, 15], num_
     
     return results
 
-def list_available_modulations():
-    """List supported modulation schemes"""
-    return ["qam", "pam", "psk"]
-
 def simulate_radio_map(tx_position=[0,0,0], rx_position=[100,0,0], metric="rss"):
     """Generate radio coverage map using ray tracing (runs external script)"""
     import subprocess
     import os
     
     script_path = os.path.join(os.path.dirname(__file__), "..", "scripts", "run_radiomap.py")
-    result = subprocess.run(["python", script_path, metric, 
+    result = subprocess.run(["python3", script_path, metric, 
                            str(tx_position[0]), str(tx_position[1]), str(tx_position[2]),
                            str(rx_position[0]), str(rx_position[1]), str(rx_position[2])],
                           capture_output=True, text=True)
@@ -113,29 +109,11 @@ def simulate_radio_map(tx_position=[0,0,0], rx_position=[100,0,0], metric="rss")
 def list_available_tools():
     """List all available simulation tools"""
     return {
-        "constellation": "Generate constellation diagrams with AWGN",
-        "ber": "Calculate Bit Error Rate for different channels",
-        "radio_map": "Generate radio coverage map using ray tracing",
-        "modulations": "List available modulation schemes"
-    }
-
-def get_modulation_info(modulation="qam", bits_per_symbol=2):
-    """Get information about a modulation scheme"""
-    # Handle QPSK and PSK aliases
-    mod_lower = modulation.lower()
-    if mod_lower in ["qpsk", "psk"]:
-        modulation = "qam"  # QPSK = 4-QAM
-        bits_per_symbol = 2
-    elif mod_lower == "bpsk":
-        modulation = "pam"  # BPSK = 2-PAM
-        bits_per_symbol = 1
-    
-    const = Constellation(modulation, num_bits_per_symbol=bits_per_symbol, normalize=True)
-    return {
-        "modulation": f"{2**bits_per_symbol}-{modulation.upper()}",
-        "num_points": const.num_points,
-        "bits_per_symbol": bits_per_symbol,
-        "points": const.points.numpy().tolist()
+        "simulate_constellation": "Generate constellation diagrams with AWGN",
+        "simulate_ber": "Calculate Bit Error Rate for different channels",
+        "simulate_radio_map": "Generate radio coverage map using ray tracing",
+        "simulate_ber_mimo": "Simulate BER for MIMO systems with configurable antennas",
+        "compare_mimo_performance": "Compare SISO vs MIMO performance with BER plots"
     }
 
 def simulate_ber_mimo(num_tx_ant=1, num_rx_ant=1, num_bits=100000):
@@ -204,21 +182,21 @@ def simulate_ber_mimo(num_tx_ant=1, num_rx_ant=1, num_bits=100000):
 
     return ber_dict
 
-def plot_ber_comparison(single_ber, multi_ber):
+def compare_mimo_performance(siso_config=[1,1], mimo_config=[2,2], num_bits=100000):
     """
-    Draw picture
+    Compare SISO vs MIMO performance by running both simulations.
     Args:
-        single_ber: the return of simulate_ber_mimo
-        multi_ber: the return of simulate_ber_mimo
+        siso_config: [num_tx_ant, num_rx_ant] for SISO (default [1,1])
+        mimo_config: [num_tx_ant, num_rx_ant] for MIMO (default [2,2])
+        num_bits: total bits to transmit
     Returns:
-        Picture
+        dict with both results and labels
     """
-    plt.figure()
-    plt.semilogy(list(single_ber.keys()), list(single_ber.values()), 'o-', label="SISO (1x1)")
-    plt.semilogy(list(multi_ber.keys()), list(multi_ber.values()), 's-', label="MIMO (2x2)")
-    plt.xlabel("SNR (dB)")
-    plt.ylabel("BER")
-    plt.grid(True, which="both")
-    plt.legend()
-    plt.title("Impact of Multiple Antennas on Link Performance")
-    plt.show()
+    siso_ber = simulate_ber_mimo(num_tx_ant=siso_config[0], num_rx_ant=siso_config[1], num_bits=num_bits)
+    mimo_ber = simulate_ber_mimo(num_tx_ant=mimo_config[0], num_rx_ant=mimo_config[1], num_bits=num_bits)
+    
+    return {
+        "siso": {"config": f"{siso_config[0]}x{siso_config[1]}", "ber": siso_ber},
+        "mimo": {"config": f"{mimo_config[0]}x{mimo_config[1]}", "ber": mimo_ber}
+    }
+
