@@ -1,10 +1,11 @@
 """Sionna simulation tools wrapper"""
+import os
+import subprocess
 import numpy as np
 import tensorflow as tf
 from sionna.phy.mapping import Constellation
 from sionna.phy.channel.awgn import AWGN
 from sionna.phy.channel.rayleigh_block_fading import RayleighBlockFading
-import matplotlib.pyplot as plt
 def simulate_constellation(modulation="qam", bits_per_symbol=2, num_symbols=2000, snr_db_list=[-5, 15]):
     """Generate constellation with AWGN at different SNR levels"""
     bits_per_symbol = int(bits_per_symbol)
@@ -89,9 +90,6 @@ def simulate_ber(modulation="qam", bits_per_symbol=2, snr_db_list=[-5, 15], num_
 
 def simulate_radio_map(tx_position=[0,0,0], rx_position=[100,0,0], metric="rss"):
     """Generate radio coverage map using ray tracing (runs external script)"""
-    import subprocess
-    import os
-    
     script_path = os.path.join(os.path.dirname(__file__), "..", "scripts", "run_radiomap.py")
     result = subprocess.run(["python3", script_path, metric, 
                            str(tx_position[0]), str(tx_position[1]), str(tx_position[2]),
@@ -126,10 +124,7 @@ def simulate_ber_mimo(num_tx_ant=1, num_rx_ant=1, num_bits=100000):
     Returns:
         ber_dict: dictionary mapping SNR(dB) -> BER
     """
-    # QPSK constellation
-    #const_points = tf.constant([1+1j, 1-1j, -1+1j, -1-1j], dtype=tf.complex64) / tf.sqrt(2.0)
-    const_points = tf.constant([1 + 1j, 1 - 1j, -1 + 1j, -1 - 1j], dtype=tf.complex64) / tf.cast(tf.sqrt(2.0),
-                                                                                                 tf.complex64)
+    const_points = tf.constant([1 + 1j, 1 - 1j, -1 + 1j, -1 - 1j], dtype=tf.complex64) / tf.cast(tf.sqrt(2.0), tf.complex64)
 
     bits_per_symbol = 2
     snr_dbs = range(0, 21, 2)  # 0~20dB, step 2
@@ -152,15 +147,12 @@ def simulate_ber_mimo(num_tx_ant=1, num_rx_ant=1, num_bits=100000):
         h_imag = tf.random.normal([num_symbols, num_rx_ant, num_tx_ant], dtype=tf.float32)
         h = tf.complex(h_real, h_imag) / tf.cast(tf.sqrt(2.0), tf.complex64)
 
-
         noise_real = tf.random.normal([num_symbols, num_rx_ant], dtype=tf.float32)
         noise_imag = tf.random.normal([num_symbols, num_rx_ant], dtype=tf.float32)
         noise = tf.complex(noise_real, noise_imag) * tf.cast(tf.sqrt(no / 2), tf.complex64)
 
-
         tx = tf.reshape(tx, [num_symbols, num_tx_ant])
-        y = tf.squeeze(tf.matmul(h, tx[:, :, None]), axis=-1) + noise  # [num_symbols, num_rx_ant]
-
+        y = tf.squeeze(tf.matmul(h, tx[:, :, None]), axis=-1) + noise
 
         # Maximal Ratio Combining (MRC)
         h_total = h[:, :, 0]  # [num_symbols, num_rx_ant]
