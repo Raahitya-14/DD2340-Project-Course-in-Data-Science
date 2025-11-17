@@ -34,10 +34,13 @@ def plot_ber(result):
         snr_vals = []
         ber_vals = []
         for snr in snr_list:
-            ber = result['ber'][snr].get(channel)
-            if ber is not None:
-                snr_vals.append(snr)
-                ber_vals.append(max(ber, 1e-6))
+            # Try both integer and string keys
+            ber_data = result['ber'].get(snr) or result['ber'].get(str(snr))
+            if ber_data:
+                ber = ber_data.get(channel)
+                if ber is not None:
+                    snr_vals.append(snr)
+                    ber_vals.append(max(ber, 1e-6))
         if ber_vals:
             plt.semilogy(snr_vals, ber_vals, 'o-', label=channel.upper())
     

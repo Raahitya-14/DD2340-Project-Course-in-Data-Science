@@ -38,12 +38,16 @@ Available tools:
 - simulate_constellation: Generate constellation diagrams with AWGN noise
 - simulate_ber: Calculate Bit Error Rate for different channels
 - simulate_radio_map: Generate radio coverage maps using ray tracing
+- simulate_ber_mimo: Simulate BER for MIMO systems with configurable antennas
+- compare_mimo_performance: Compare SISO vs MIMO performance (use this for antenna comparison tasks)
 
 Guidelines:
 - Only call a tool if simulation is explicitly required.
 - If conceptual, answer in natural language.
 - Map schemes: QPSK=2 bits, 16-QAM=4 bits, 64-QAM=6 bits.
-- For performance tasks: determine SNR levels.
+- For BER curves: use multiple SNR points (e.g., range from -5 to 15 dB with steps of 2-5 dB) for smooth curves.
+- For single-point BER: use only the specified SNR values.
+- For antenna comparison or MIMO analysis: use compare_mimo_performance.
 - For propagation tasks: use simulate_radio_map.
 """
         # MCP HTTP server

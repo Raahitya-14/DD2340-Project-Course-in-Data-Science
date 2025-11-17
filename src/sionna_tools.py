@@ -162,10 +162,12 @@ def simulate_ber_mimo(num_tx_ant=1, num_rx_ant=1, num_bits=100000):
         y = tf.squeeze(tf.matmul(h, tx[:, :, None]), axis=-1) + noise  # [num_symbols, num_rx_ant]
 
 
-        h_conj = tf.math.conj(h[:, :, 0])
-        #combined = tf.reduce_sum(h_conj * y, axis=1) / tf.reduce_sum(tf.abs(h[:, :, 0])**2, axis=1)
-        combined = tf.reduce_sum(h_conj * y, axis=1) / tf.cast(tf.reduce_sum(tf.abs(h[:, :, 0]) ** 2, axis=1),
-                                                               tf.complex64)
+        # Maximal Ratio Combining (MRC)
+        h_total = h[:, :, 0]  # [num_symbols, num_rx_ant]
+        h_power = tf.reduce_sum(tf.abs(h_total)**2, axis=1, keepdims=True)  # Total channel power
+        h_conj = tf.math.conj(h_total)
+        # MRC: sum weighted by conjugate channel, then normalize by total power
+        combined = tf.reduce_sum(h_conj * y, axis=1) / tf.cast(tf.squeeze(h_power), tf.complex64)
 
         # Hard decision (QPSK)
         rx_bits_i = tf.cast(tf.math.real(combined) < 0, tf.int32)

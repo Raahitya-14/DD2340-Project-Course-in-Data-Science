@@ -1,32 +1,42 @@
 #!/usr/bin/env python3
-"""Generate radio coverage map using Sionna RT"""
+"""Generate radio coverage map using free-space path loss"""
 import matplotlib.pyplot as plt
-from sionna.rt import load_scene, Transmitter, Receiver, PlanarArray, RadioMapSolver
+import numpy as np
 
 def generate_radio_map(tx_pos=[0,0,0], rx_pos=[100,0,0], metric="rss"):
-    scene = load_scene()
+    # Create grid
+    x = np.linspace(-20, 120, 200)
+    y = np.linspace(-50, 50, 150)
+    X, Y = np.meshgrid(x, y)
     
-    scene.tx_array = PlanarArray(num_rows=1, num_cols=1, vertical_spacing=0.5,
-                                 horizontal_spacing=0.5, pattern="tr38901", polarization="V")
-    scene.rx_array = PlanarArray(num_rows=1, num_cols=1, vertical_spacing=0.5,
-                                 horizontal_spacing=0.5, pattern="dipole", polarization="cross")
+    # Calculate distance from transmitter to each point
+    dist = np.sqrt((X - tx_pos[0])**2 + (Y - tx_pos[1])**2 + 1e-6)  # avoid division by zero
     
-    tx = Transmitter(name="tx", position=tx_pos, display_radius=2)
-    scene.add(tx)
+    # Free-space path loss: RSS = Pt - 20*log10(4*pi*d/lambda)
+    # Assuming frequency = 2.4 GHz, lambda = 0.125 m, Pt = 20 dBm
+    wavelength = 0.125
+    rss = 20 - 20 * np.log10(4 * np.pi * dist / wavelength)
     
-    rx = Receiver(name="rx", position=rx_pos, display_radius=2)
-    scene.add(rx)
+    # Create plot
+    fig, ax = plt.subplots(figsize=(12, 8))
+    im = ax.contourf(X, Y, rss, levels=20, cmap='viridis')
+    cbar = plt.colorbar(im, ax=ax, label='Received Signal Strength (dBm)')
     
-    tx.look_at(rx)
+    # Plot transmitter and receiver
+    ax.scatter(tx_pos[0], tx_pos[1], color="blue", marker="^", s=300, 
+               label="Transmitter", edgecolors='white', linewidths=3, zorder=10)
+    ax.scatter(rx_pos[0], rx_pos[1], color="red", marker="o", s=250, 
+               label="Receiver", edgecolors='white', linewidths=3, zorder=10)
     
-    rm_solver = RadioMapSolver()
-    rm = rm_solver(scene, max_depth=5, samples_per_tx=10**7, cell_size=(5, 5),
-                   center=[-10, -10, -10], size=[400, 400], orientation=[0, 0, 0])
+    ax.set_xlabel('X Position (m)', fontsize=12)
+    ax.set_ylabel('Y Position (m)', fontsize=12)
+    ax.set_title('Free-Space Radio Coverage Map', fontsize=14)
+    ax.legend(loc='upper right', fontsize=12)
+    ax.grid(True, alpha=0.3)
     
-    rm.show(metric=metric)
-    plt.scatter(rx_pos[0], rx_pos[1], color="red", marker="o", s=100, label="Receiver")
-    plt.legend()
-    plt.savefig(f"outputs/radiomap_{metric}.png")
+    plt.tight_layout()
+    plt.savefig(f"outputs/radiomap_{metric}.png", dpi=150, bbox_inches='tight')
+    plt.close()
     print(f"Saved: outputs/radiomap_{metric}.png")
 
 if __name__ == "__main__":
