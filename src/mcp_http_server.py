@@ -51,6 +51,18 @@ def list_tools():
                 }
             },
             {
+                "name": "simulate_multi_radio_map",
+                "description": "Generate coverage map for multiple transmitters in one scene",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "tx_positions": {"type": "array", "items": {"type": "array", "items": {"type": "number"}}, "default": [[0, 0, 0]]},
+                        "rx_positions": {"type": "array", "items": {"type": "array", "items": {"type": "number"}}, "default": [[100, 0, 0]]},
+                        "metric": {"type": "string", "enum": ["rss", "path_gain", "sinr"], "default": "rss"}
+                    }
+                }
+            },
+            {
                 "name": "list_available_tools",
                 "description": "List all available simulation tools and their descriptions",
                 "inputSchema": {
@@ -103,6 +115,8 @@ def call_tool():
             result = sionna_tools.simulate_ber(**arguments)
         elif tool_name == "simulate_radio_map":
             result = sionna_tools.simulate_radio_map(**arguments)
+        elif tool_name == "simulate_multi_radio_map":
+            result = sionna_tools.simulate_multi_radio_map(**arguments)
         elif tool_name == "list_available_tools":
             result = sionna_tools.list_available_tools()
         elif tool_name == "simulate_ber_mimo":

@@ -67,9 +67,16 @@ class ChatInterface:
                     plots.append(Image.open(buf))
                 
                 elif tool_name == "simulate_radio_map":
-                    response += f"Generated radio map: {sim_result['plot_path']}\n"
-                    if os.path.exists(sim_result['plot_path']):
-                        plots.append(Image.open(sim_result['plot_path']))
+                    plot_path = sim_result.get("cwd_plot_path") or sim_result.get("plot_path") or sim_result.get("relative_plot_path")
+                    response += f"Generated radio map: {plot_path}\n"
+                    if plot_path and os.path.exists(plot_path):
+                        plots.append(Image.open(plot_path))
+                
+                elif tool_name == "simulate_multi_radio_map":
+                    plot_path = sim_result.get("cwd_plot_path") or sim_result.get("plot_path") or sim_result.get("relative_plot_path")
+                    response += f"Generated multi-transmitter radio map: {plot_path}\n"
+                    if plot_path and os.path.exists(plot_path):
+                        plots.append(Image.open(plot_path))
                 
                 elif tool_name == "simulate_ber_mimo":
                     config = f"{params.get('num_tx_ant', 1)}x{params.get('num_rx_ant', 1)}"

@@ -1,11 +1,48 @@
 """Sionna simulation tools wrapper"""
 import os
 import subprocess
+import json
+import tempfile
 import numpy as np
 import tensorflow as tf
 from sionna.phy.mapping import Constellation
 from sionna.phy.channel.awgn import AWGN
 from sionna.phy.channel.rayleigh_block_fading import RayleighBlockFading
+
+
+import ast
+
+
+def _parse_positions_string(value):
+    """Robustly parse a string representation of positions.
+
+    Claude sometimes returns non-JSON literals (e.g., list comprehensions).
+    We first try json.loads and fall back to ast.literal_eval.
+    """
+    cleaned = value.strip()
+    if not cleaned:
+        raise ValueError("Empty position string")
+    parsed = None
+    if cleaned[0] in "[{":
+        try:
+            parsed = json.loads(cleaned.replace("'", '"'))
+        except Exception:
+            pass
+    if parsed is None:
+        parsed = ast.literal_eval(cleaned)
+    return parsed
+
+
+def _to_float_triplet(pos):
+    if isinstance(pos, str):
+        pos = _parse_positions_string(pos)
+    return [float(pos[0]), float(pos[1]), float(pos[2])]
+
+
+def _positions_slug(prefix, positions):
+    normalized = [_to_float_triplet(pos) for pos in positions]
+    parts = ["{}_{}_{}".format(pos[0], pos[1], pos[2]) for pos in normalized]
+    return f"{prefix}{'__'.join(parts)}"
 def simulate_constellation(modulation="qam", bits_per_symbol=2, num_symbols=2000, snr_db_list=[-5, 15]):
     """Generate constellation with AWGN at different SNR levels"""
     bits_per_symbol = int(bits_per_symbol)
@@ -90,18 +127,58 @@ def simulate_ber(modulation="qam", bits_per_symbol=2, snr_db_list=[-5, 15], num_
 
 def simulate_radio_map(tx_position=[0,0,0], rx_position=[100,0,0], metric="rss"):
     """Generate radio coverage map using ray tracing (runs external script)"""
+    tx_position = _to_float_triplet(tx_position)
+    rx_position = _to_float_triplet(rx_position)
     script_path = os.path.join(os.path.dirname(__file__), "..", "scripts", "run_radiomap.py")
     result = subprocess.run(["python3", script_path, metric, 
                            str(tx_position[0]), str(tx_position[1]), str(tx_position[2]),
                            str(rx_position[0]), str(rx_position[1]), str(rx_position[2])],
                           capture_output=True, text=True)
     
+    filename = f"radiomap_{metric}_{_positions_slug('tx', [tx_position])}_{_positions_slug('rx', [rx_position])}.png"
+    abs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "outputs", filename))
     return {
         "tx_position": tx_position,
         "rx_position": rx_position,
         "metric": metric,
         "output": result.stdout,
-        "plot_path": f"outputs/radiomap_{metric}.png"
+        "plot_path": abs_path,
+        "relative_plot_path": os.path.join("outputs", filename),
+        "cwd_plot_path": os.path.join(os.getcwd(), "outputs", filename),
+    }
+
+
+def simulate_multi_radio_map(tx_positions, rx_positions=None, metric="rss"):
+    """Generate radio coverage map for multiple transmitters"""
+    if not tx_positions:
+        raise ValueError("tx_positions must contain at least one transmitter")
+    if rx_positions is None or len(rx_positions) == 0:
+        rx_positions = [[100, 0, 0]]
+    if isinstance(tx_positions, str):
+        tx_positions = _parse_positions_string(tx_positions)
+    if isinstance(rx_positions, str):
+        rx_positions = _parse_positions_string(rx_positions)
+    tx_positions = [_to_float_triplet(pos) for pos in tx_positions]
+    rx_positions = [_to_float_triplet(pos) for pos in rx_positions]
+    script_path = os.path.join(os.path.dirname(__file__), "..", "scripts", "run_radiomap.py")
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w", encoding="utf-8") as tmp:
+        json.dump({"tx_positions": tx_positions, "rx_positions": rx_positions, "metric": metric}, tmp)
+        tmp_path = tmp.name
+    try:
+        result = subprocess.run(["python3", script_path, "--config", tmp_path],
+                                capture_output=True, text=True)
+    finally:
+        os.unlink(tmp_path)
+    filename = f"radiomap_{metric}_{_positions_slug('tx', tx_positions)}_{_positions_slug('rx', rx_positions)}.png"
+    abs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "outputs", filename))
+    return {
+        "tx_positions": tx_positions,
+        "rx_positions": rx_positions,
+        "metric": metric,
+        "output": result.stdout,
+        "plot_path": abs_path,
+        "relative_plot_path": os.path.join("outputs", filename),
+        "cwd_plot_path": os.path.join(os.getcwd(), "outputs", filename),
     }
 
 def list_available_tools():
@@ -110,6 +187,7 @@ def list_available_tools():
         "simulate_constellation": "Generate constellation diagrams with AWGN",
         "simulate_ber": "Calculate Bit Error Rate for different channels",
         "simulate_radio_map": "Generate radio coverage map using ray tracing",
+        "simulate_multi_radio_map": "Generate radio map for multiple transmitters and receivers",
         "simulate_ber_mimo": "Simulate BER for MIMO systems with configurable antennas",
         "compare_mimo_performance": "Compare SISO vs MIMO performance with BER plots"
     }
@@ -193,4 +271,3 @@ def compare_mimo_performance(siso_config=[1,1], mimo_config=[2,2], num_bits=1000
         "siso": {"config": f"{siso_config[0]}x{siso_config[1]}", "ber": siso_ber},
         "mimo": {"config": f"{mimo_config[0]}x{mimo_config[1]}", "ber": mimo_ber}
     }
-

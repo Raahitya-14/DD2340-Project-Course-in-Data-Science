@@ -7,6 +7,7 @@ import subprocess
 import time
 from pathlib import Path
 from anthropic import Anthropic
+from task_decomposer import TaskDecomposer
 
 try:
     from dotenv import load_dotenv
@@ -38,6 +39,7 @@ Available tools:
 - simulate_constellation: Generate constellation diagrams with AWGN noise
 - simulate_ber: Calculate Bit Error Rate for different channels
 - simulate_radio_map: Generate radio coverage maps using ray tracing
+- simulate_multi_radio_map: Generate coverage maps for multiple transmitters simultaneously
 - simulate_ber_mimo: Simulate BER for MIMO systems with configurable antennas
 - compare_mimo_performance: Compare SISO vs MIMO performance (use this for antenna comparison tasks)
 
@@ -49,6 +51,7 @@ Guidelines:
 - For single-point BER: use only the specified SNR values.
 - For antenna comparison or MIMO analysis: use compare_mimo_performance.
 - For propagation tasks: use simulate_radio_map.
+- You may also receive an additional instruction block produced by an internal TaskDecomposer. Always honor its task type, parameters, and step-by-step guidance before responding.
 """
         # MCP HTTP server
         self.mcp_server_url = "http://127.0.0.1:5001"
@@ -56,6 +59,7 @@ Guidelines:
         self._start_mcp_server()
         # cache tools
         self.available_tools = self._get_tools_from_mcp()
+        self.decomposer = TaskDecomposer()
 
     def _start_mcp_server(self):
         """Start MCP HTTP server if not already running"""
@@ -73,13 +77,13 @@ Guidelines:
             stderr=subprocess.PIPE,
         )
 
-        for _ in range(20):
+        for _ in range(60):
             try:
                 requests.get(f"{self.mcp_server_url}/tools", timeout=1)
                 print("MCP server started")
                 return
             except:
-                time.sleep(0.5)
+                time.sleep(1.0)
 
         if self.mcp_process.poll() is not None:
             stdout, stderr = self.mcp_process.communicate()
@@ -106,16 +110,32 @@ Guidelines:
 
     async def process_query(self, query: str) -> dict:
         """Process one query and return structured result for UI"""
+        decomposition = self.decomposer.decompose(query)
+        structured_hint = self.decomposer.format_for_prompt(decomposition)
+
         messages = [{"role": "user", "content": query}]
+        if structured_hint:
+            messages.append({"role": "user", "content": structured_hint})
+        toolset = self.available_tools
+        if decomposition.get("task_type") == "multi_tx_optimization":
+            preferred_tool = next((t for t in self.available_tools if t["name"] == "simulate_multi_radio_map"), None)
+            if preferred_tool:
+                toolset = [preferred_tool]
+
         response = self.client.messages.create(
             model=self.model,
             max_tokens=2000,
             system=self.system_prompt,
             messages=messages,
-            tools=self.available_tools,
+            tools=toolset,
         )
 
-        result = {"task": query, "model": self.model, "tool_calls": []}
+        result = {
+            "task": query,
+            "model": self.model,
+            "tool_calls": [],
+            "decomposition": decomposition,
+        }
 
         process_query = True
         while process_query:

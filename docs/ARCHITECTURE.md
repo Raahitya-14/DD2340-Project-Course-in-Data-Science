@@ -1,17 +1,15 @@
 # Project Architecture
 
-## File Structure and Call Flow
+## System Overview with TaskDecomposer
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         USER INTERFACES                          │
 └─────────────────────────────────────────────────────────────────┘
 
-    app.py (Main Entry)                scripts/run_simulation.py
-         │                                      │
-         └──────────┬───────────────────────────┘
-                    │
-                    ▼
+    app.py (Main Entry)
+         │
+         ▼
          ┌──────────────────────┐
          │  src/ui/chat.py      │  ← Gradio Web Interface
          │  (ChatInterface)     │
@@ -24,40 +22,41 @@
          │   (SionnaAgent)      │
          └──────────────────────┘
                     │
-                    │ HTTP requests (MCP protocol)
-                    ▼
-         ┌──────────────────────────┐
-         │ src/mcp_http_server.py   │  ← MCP Server (Flask)
-         │ Port: 5001               │
-         └──────────────────────────┘
+         ┌──────────┼──────────┐
+         │          │          │
+         ▼          ▼          ▼
+┌─────────────┐ ┌─────────┐ ┌──────────────────────────┐
+│TaskDecomposer│ │ Claude  │ │ src/mcp_http_server.py   │
+│(Rule-based) │ │   API   │ │ Port: 5001               │
+└─────────────┘ └─────────┘ └──────────────────────────┘
+         │          │                     │
+         │          │                     │ calls simulation functions
+         │          │                     ▼
+         │          │          ┌──────────────────────┐
+         │          │          │ src/sionna_tools.py  │  ← 6 Simulation Tools
+         │          │          └──────────────────────┘
                     │
-                    │ calls simulation functions
-                    ▼
-         ┌──────────────────────┐
-         │ src/sionna_tools.py  │  ← Simulation Functions
-         └──────────────────────┘
-                    │
-        ┌───────────┼───────────┬──────────────┐
-        │           │           │              │
-        ▼           ▼           ▼              ▼
-┌─────────────┐ ┌─────────┐ ┌─────────┐ ┌──────────────┐
-│ simulate_   │ │simulate_│ │  list_  │ │ simulate_    │
-│constellation│ │  ber    │ │modula-  │ │ radio_map    │
-└─────────────┘ └─────────┘ │ tions   │ └──────────────┘
-        │           │         └─────────┘        │
-        │           │                            │ subprocess.run()
-        │           │                            ▼
-        │           │                   ┌──────────────────┐
-        │           │                   │ scripts/         │
-        │           │                   │ run_radiomap.py  │
-        │           │                   └──────────────────┘
-        │           │                            │
-        │           │                            │ imports
-        │           │                            ▼
-        │           │                   ┌──────────────────┐
-        │           │                   │  sionna.rt       │
-        │           │                   │  (Ray Tracing)   │
-        │           │                   └──────────────────┘
+        ┌───────────┼───────────┬──────────────┬──────────────┬──────────────┐
+        │           │           │              │              │              │
+        ▼           ▼           ▼              ▼              ▼              ▼
+┌─────────────┐ ┌─────────┐ ┌──────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│ simulate_   │ │simulate_│ │ simulate_    │ │simulate_    │ │simulate_ber_│ │compare_mimo_│
+│constellation│ │  ber    │ │ radio_map    │ │multi_radio_ │ │    mimo     │ │performance  │
+└─────────────┘ └─────────┘ └──────────────┘ │    map      │ └─────────────┘ └─────────────┘
+        │           │                │        └─────────────┘        │              │
+        │           │                │ subprocess.run()              │              │
+        │           │                ▼                               │              │
+        │           │       ┌──────────────────┐                    │              │
+        │           │       │ scripts/         │                    │              │
+        │           │       │ run_radiomap.py  │                    │              │
+        │           │       └──────────────────┘                    │              │
+        │           │                │                               │              │
+        │           │                │ imports                       │              │
+        │           │                ▼                               │              │
+        │           │       ┌──────────────────┐                    │              │
+        │           │       │  sionna.rt       │                    │              │
+        │           │       │  (Ray Tracing)   │                    │              │
+        │           │       └──────────────────┘                    │              │
         │           │
         │           │ uses
         ▼           ▼
@@ -111,20 +110,26 @@ Agent                    MCP Server              Sionna Tools
 
 ## Key Design Decisions
 
-### 1. HTTP-Based MCP Server
+### 1. TaskDecomposer Integration
+Rule-based task classification extracts parameters (SNR, modulation, positions) and provides structured guidance to Claude for better tool selection and parameter handling.
+
+### 2. HTTP-Based MCP Server
 Flask server on port 5001 provides REST API for tool discovery and execution. Agent communicates via HTTP requests instead of stdio.
 
-### 2. Subprocess for Ray Tracing
+### 3. Subprocess for Ray Tracing
 Mitsuba causes segfaults when imported in the main process, so ray tracing runs in a separate subprocess that saves results to disk.
 
-### 3. Agent-Based Architecture
-Claude API interprets natural language tasks and generates tool calls. Agent fetches available tools from MCP server and executes them via HTTP.
+### 4. Agent-Based Architecture
+Claude API interprets natural language tasks (enhanced by TaskDecomposer hints) and generates tool calls. Agent fetches available tools from MCP server and executes them via HTTP.
 
-### 4. Matplotlib → PIL Conversion
+### 5. Matplotlib → PIL Conversion
 Gradio requires PIL images, so matplotlib figures are saved to BytesIO buffer and loaded as PIL images before display.
 
-### 5. Complex Number Serialization
+### 6. Complex Number Serialization
 JSON doesn't support complex numbers, so they're converted to [real, imag] lists in the MCP server and reconstructed in the client.
+
+### 7. MIMO Simulation Architecture
+MIMO tools use direct TensorFlow operations for channel modeling and maximal ratio combining, avoiding external dependencies.
 
 ## Dependencies Between Files
 
@@ -132,6 +137,7 @@ JSON doesn't support complex numbers, so they're converted to [real, imag] lists
 app.py
   └─ src/ui/chat.py
        ├─ src/agent.py
+       │    ├─ src/task_decomposer.py (Rule-based task classification)
        │    ├─ anthropic (Claude API)
        │    └─ requests → http://127.0.0.1:5001 (MCP Server)
        ├─ src/mcp_http_server.py (Flask)
@@ -139,6 +145,7 @@ app.py
        │         ├─ sionna.phy.mapping
        │         ├─ sionna.phy.channel.awgn
        │         ├─ sionna.phy.channel.rayleigh_block_fading
+       │         ├─ tensorflow (for MIMO simulations)
        │         └─ subprocess → scripts/run_radiomap.py
        │                           └─ sionna.rt
        └─ src/utils/plotting.py
@@ -156,7 +163,29 @@ app.py
 
 ```
 outputs/
-  ├─ *_constellation.png  (from simulate_constellation)
-  ├─ *_BER.png           (from simulate_ber)
-  └─ radiomap_*.png      (from simulate_radio_map)
+  ├─ *_constellation.png     (from simulate_constellation)
+  ├─ *_BER.png              (from simulate_ber)
+  ├─ radiomap_*.png         (from simulate_radio_map)
+  ├─ radiomap_*_multi.png   (from simulate_multi_radio_map)
+  └─ mimo_comparison_*.png  (from compare_mimo_performance)
+```
+
+## Task Classification System
+
+```
+TaskDecomposer Classification:
+
+├─ constellation     → simulate_constellation
+├─ ber              → simulate_ber
+├─ mimo_comparison  → compare_mimo_performance
+├─ radiomap         → simulate_radio_map
+├─ multi_tx_optimization → simulate_multi_radio_map
+└─ general          → Natural language response
+
+Parameter Extraction:
+├─ SNR values: -5, 15 dB → snr_db_list
+├─ Modulation: 64-QAM → modulation="qam", bits_per_symbol=6
+├─ Positions: (0,0,0) → tx_position=[0,0,0]
+├─ Antenna configs: 2x2 → mimo_config=[2,2]
+└─ Transmitter count: 4 transmitters → num_transmitters=4
 ```
