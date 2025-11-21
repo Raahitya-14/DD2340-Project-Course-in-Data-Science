@@ -1,87 +1,42 @@
 # Project Architecture
 
-## System Overview with TaskDecomposer
+## System Overview (Updated)
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         USER INTERFACES                          │
-└─────────────────────────────────────────────────────────────────┘
-
-    app.py (Main Entry)
-         │
-         ▼
-         ┌──────────────────────┐
-         │  src/ui/chat.py      │  ← Gradio Web Interface
-         │  (ChatInterface)     │
-         └──────────────────────┘
-                    │
-                    │ imports & calls
-                    ▼
-         ┌──────────────────────┐
-         │   src/agent.py       │  ← AI Agent (Claude API)
-         │   (SionnaAgent)      │
-         └──────────────────────┘
-                    │
-         ┌──────────┼──────────┐
-         │          │          │
-         ▼          ▼          ▼
-┌─────────────┐ ┌─────────┐ ┌──────────────────────────┐
-│TaskDecomposer│ │ Claude  │ │ src/mcp_http_server.py   │
-│(Rule-based) │ │   API   │ │ Port: 5001               │
-└─────────────┘ └─────────┘ └──────────────────────────┘
-         │          │                     │
-         │          │                     │ calls simulation functions
-         │          │                     ▼
-         │          │          ┌──────────────────────┐
-         │          │          │ src/sionna_tools.py  │  ← 6 Simulation Tools
-         │          │          └──────────────────────┘
-                    │
-        ┌───────────┼───────────┬──────────────┬──────────────┬──────────────┐
-        │           │           │              │              │              │
-        ▼           ▼           ▼              ▼              ▼              ▼
-┌─────────────┐ ┌─────────┐ ┌──────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
-│ simulate_   │ │simulate_│ │ simulate_    │ │simulate_    │ │simulate_ber_│ │compare_mimo_│
-│constellation│ │  ber    │ │ radio_map    │ │multi_radio_ │ │    mimo     │ │performance  │
-└─────────────┘ └─────────┘ └──────────────┘ │    map      │ └─────────────┘ └─────────────┘
-        │           │                │        └─────────────┘        │              │
-        │           │                │ subprocess.run()              │              │
-        │           │                ▼                               │              │
-        │           │       ┌──────────────────┐                    │              │
-        │           │       │ scripts/         │                    │              │
-        │           │       │ run_radiomap.py  │                    │              │
-        │           │       └──────────────────┘                    │              │
-        │           │                │                               │              │
-        │           │                │ imports                       │              │
-        │           │                ▼                               │              │
-        │           │       ┌──────────────────┐                    │              │
-        │           │       │  sionna.rt       │                    │              │
-        │           │       │  (Ray Tracing)   │                    │              │
-        │           │       └──────────────────┘                    │              │
-        │           │
-        │           │ uses
-        ▼           ▼
-┌─────────────────────────────────┐
-│  Sionna Library Components      │
-│  - Constellation                │
-│  - AWGN                         │
-│  - RayleighBlockFading          │
-└─────────────────────────────────┘
-        │
-        │ returns results
-        ▼
-┌─────────────────────────────────┐
-│  src/utils/plotting.py          │  ← Plotting Functions
-│  - plot_constellation()         │
-│  - plot_ber()                   │
-└─────────────────────────────────┘
-        │
-        │ matplotlib figures → PIL images
-        ▼
-┌─────────────────────────────────┐
-│  Gradio Display                 │
-│  (Web Interface)                │
-└─────────────────────────────────┘
+User (Browser)
+   │
+   ▼
+app.py ──> src/ui/chat.py  (Gradio ChatInterface)
+               │
+               └────► SionnaAgent (src/agent.py)
+                         │
+                         ├─ TaskDecomposer
+                         │     ↳ classify task / extract parameters
+                         │     ↳ inject structured hints for Claude
+                         │
+                         ├─ Claude API (Anthropic)
+                         │     ↳ natural-language reasoning + tool selection
+                         │
+                         └─ MCP client  ─────►  src/mcp_http_server.py (Flask, port 5001)
+                                                    │
+                                                    ▼
+                                           src/sionna_tools.py
+                                                    │
+       ┌────────────────┬────────────────┬────────────────┬────────────────┬────────────────┐
+       │                │                │                │                │                │
+simulate_constellation  simulate_ber  simulate_radio_map  simulate_multi_radio_map  simulate_ber_mimo  compare_mimo_performance
+                                        │                         │
+                                        │ subprocess              │ subprocess
+                                        ▼                         ▼
+                             scripts/run_radiomap.py      (same script, but receives multi-TX configs)
+                                        │
+                                        ▼
+                                   Sionna RT (ray tracing)
 ```
+
+Additional components:
+- `src/utils/plotting.py` converts numpy/TensorFlow data into Matplotlib figures; the UI turns those into PIL images.
+- `start.sh` ensures the MCP server is restarted before launching the UI; `restart_mcp.sh` can restart the server alone if required.
 
 ## MCP Communication Flow
 

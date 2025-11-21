@@ -1,6 +1,6 @@
 # Sionna AI Agent with MCP
 
-AI agent for automating wireless communication simulations using Sionna and Model Context Protocol with intelligent task decomposition.
+AI agent for automating wireless communication simulations using Sionna and Model Context Protocol with intelligent task decomposition .
 
 ## Project Structure
 

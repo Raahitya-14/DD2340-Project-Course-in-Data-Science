@@ -3,6 +3,7 @@
 import argparse
 import json
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 import os
 from typing import List
 from sionna.rt import load_scene, Transmitter, Receiver, PlanarArray, RadioMapSolver
@@ -102,14 +103,20 @@ def generate_radio_map(tx_positions=None, rx_positions=None, metric="rss"):
                     label=f"Receiver {idx+1}: {tuple(rx_pos)}", edgecolors='white', linewidths=2, zorder=10)
         legend_entries.append(f"RX{idx+1}: {tuple(rx_pos)}")
 
+    # Replace axis labels with world coordinates (meters)
+    ax.set_xlabel("X position (m)")
+    ax.set_ylabel("Y position (m)")
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda val, pos: f"{origin_x + val*cell_size_x:.0f}"))
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda val, pos: f"{origin_y + val*cell_size_y:.0f}"))
+
     # Reserve space on the right for colorbar + legend
     plt.subplots_adjust(right=0.7)
     plt.legend(
-    loc="upper left",
-    bbox_to_anchor=(1.25, 1.0),  # 1.25 pushes the legend farther to the right
-    borderaxespad=0.0,
-    title="Nodes",
-    framealpha=0.95,
+        loc="upper left",
+        bbox_to_anchor=(1.25, 1.0),
+        borderaxespad=0.0,
+        title="Nodes",
+        framealpha=0.95,
     )
 
     filename = f"radiomap_{metric}_{_positions_slug('tx', tx_positions)}_{_positions_slug('rx', rx_positions)}.png"
