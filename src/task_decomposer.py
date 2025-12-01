@@ -37,6 +37,14 @@ class TaskDecomposer:
         if antenna_configs and task_type == "mimo_comparison":
             params["siso_config"] = antenna_configs.get("siso") or [1, 1]
             params["mimo_config"] = antenna_configs.get("mimo") or [2, 2]
+        
+        if task_type == "antenna_sweep":
+            tx_list = self._extract_antenna_list(lowered)
+            if tx_list:
+                params["tx_antenna_list"] = tx_list
+            rx_ant = self._extract_rx_antenna_count(lowered)
+            if rx_ant:
+                params["num_rx_ant"] = rx_ant
 
         positions = self._extract_positions(lowered)
         if positions and task_type in {"radiomap", "multi_tx_optimization"}:
@@ -96,6 +104,8 @@ class TaskDecomposer:
     def _classify_task(self, text: str) -> str:
         if any(word in text for word in ["optimize", "optimal", "placement"]) and "transmit" in text:
             return "multi_tx_optimization"
+        if any(word in text for word in ["sweep", "vary", "different"]) and "antenna" in text:
+            return "antenna_sweep"
         if "mimo" in text or "antenna" in text and "compare" in text:
             return "mimo_comparison"
         if any(word in text for word in ["coverage", "radio map", "radiomap", "path gain", "sinr"]):
@@ -163,6 +173,22 @@ class TaskDecomposer:
         if match:
             return int(match.group(1))
         return None
+    
+    def _extract_antenna_list(self, text: str) -> List[int] | None:
+        match = re.search(r"\[(\d+(?:,\s*\d+)*)\]", text)
+        if match:
+            return [int(x.strip()) for x in match.group(1).split(",")]
+        match = re.search(r"(\d+)\s+to\s+(\d+)", text)
+        if match:
+            start, end = int(match.group(1)), int(match.group(2))
+            return [1, 2, 4, 8, 16, 32] if start == 1 and end >= 32 else list(range(start, end+1))
+        return None
+    
+    def _extract_rx_antenna_count(self, text: str) -> int | None:
+        match = re.search(r"(\d+)\s+(?:receive|rx|receiver)\s+antenna", text)
+        if match:
+            return int(match.group(1))
+        return None
 
     def _build_extra_instructions(self, task_type: str, params: Dict) -> List[str]:
         instructions: List[str] = []
@@ -178,6 +204,10 @@ class TaskDecomposer:
         elif task_type == "mimo_comparison":
             instructions.append("Use `compare_mimo_performance` to contrast SISO and MIMO BER trends.")
             instructions.append("Discuss how antenna counts influence diversity gain.")
+        elif task_type == "antenna_sweep":
+            instructions.append("Use `sweep_tx_antennas` to test multiple transmit antenna configurations.")
+            instructions.append("Analyze BER performance across different antenna counts and identify the optimal configuration.")
+            instructions.append("Explain the trade-off between antenna count and BER performance.")
         elif task_type == "multi_tx_optimization":
             instructions.append("This is an optimization problem: propose several 4-transmitter layouts before running simulations.")
             instructions.append("Call `simulate_multi_radio_map` with a list of transmitter coordinates (e.g., [[x1,y1,z1], ...]) and representative receiver/user points to evaluate SINR/coverage.")

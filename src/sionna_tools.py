@@ -271,3 +271,39 @@ def compare_mimo_performance(siso_config=[1,1], mimo_config=[2,2], num_bits=1000
         "siso": {"config": f"{siso_config[0]}x{siso_config[1]}", "ber": siso_ber},
         "mimo": {"config": f"{mimo_config[0]}x{mimo_config[1]}", "ber": mimo_ber}
     }
+
+def sweep_tx_antennas(tx_antenna_list=[1,2,4,8], num_rx_ant=16, num_bits=200000):
+    """
+    Sweep through different transmit antenna configurations to find optimal setup.
+    Args:
+        tx_antenna_list: list of transmit antenna counts to test
+        num_rx_ant: fixed number of receive antennas
+        num_bits: total bits to transmit per configuration
+    Returns:
+        dict with results for each configuration and best config at 10 dB
+    """
+    results = {}
+    
+    for num_tx in tx_antenna_list:
+        ber_dict = simulate_ber_mimo(num_tx_ant=num_tx, num_rx_ant=num_rx_ant, num_bits=num_bits)
+        results[f"{num_tx}x{num_rx_ant}"] = {
+            "num_tx_ant": num_tx,
+            "num_rx_ant": num_rx_ant,
+            "ber": ber_dict
+        }
+    
+    # Find best configuration at 10 dB
+    best_config = None
+    best_ber = float('inf')
+    for config_name, config_data in results.items():
+        if 10 in config_data["ber"]:
+            ber_at_10 = config_data["ber"][10]
+            if ber_at_10 < best_ber:
+                best_ber = ber_at_10
+                best_config = config_name
+    
+    return {
+        "results": results,
+        "best_config_at_10dB": best_config,
+        "best_ber_at_10dB": best_ber
+    }

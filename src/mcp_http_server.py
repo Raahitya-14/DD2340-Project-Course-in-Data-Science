@@ -93,6 +93,18 @@ def list_tools():
                         "num_bits": {"type": "integer", "default": 100000}
                     }
                 }
+            },
+            {
+                "name": "sweep_tx_antennas",
+                "description": "Sweep through different transmit antenna configurations to find optimal setup with fixed receive antennas",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "tx_antenna_list": {"type": "array", "items": {"type": "integer"}, "default": [1, 2, 4, 8]},
+                        "num_rx_ant": {"type": "integer", "default": 16},
+                        "num_bits": {"type": "integer", "default": 200000}
+                    }
+                }
             }
         ]
     })
@@ -126,6 +138,11 @@ def call_tool():
             result = sionna_tools.compare_mimo_performance(**arguments)
             result["siso"]["ber"] = {int(k): float(v) for k, v in result["siso"]["ber"].items()}
             result["mimo"]["ber"] = {int(k): float(v) for k, v in result["mimo"]["ber"].items()}
+        elif tool_name == "sweep_tx_antennas":
+            result = sionna_tools.sweep_tx_antennas(**arguments)
+            for config_name in result["results"]:
+                result["results"][config_name]["ber"] = {int(k): float(v) for k, v in result["results"][config_name]["ber"].items()}
+            result["best_ber_at_10dB"] = float(result["best_ber_at_10dB"])
         else:
             return jsonify({"error": f"Unknown tool: {tool_name}"}), 400
         
