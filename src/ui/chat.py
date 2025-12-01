@@ -11,7 +11,7 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 from agent import SionnaAgent
-from utils.plotting import plot_constellation, plot_ber, plot_ber_mimo, plot_mimo_comparison
+from utils.plotting import plot_constellation, plot_ber, plot_ber_mimo, plot_mimo_comparison, plot_antenna_sweep
 from PIL import Image
 import io
 
@@ -90,6 +90,14 @@ class ChatInterface:
                 elif tool_name == "compare_mimo_performance":
                     response += f"Compared SISO ({sim_result['siso']['config']}) vs MIMO ({sim_result['mimo']['config']})\n"
                     fig = plot_mimo_comparison(sim_result)
+                    buf = io.BytesIO()
+                    fig.savefig(buf, format='png')
+                    buf.seek(0)
+                    plots.append(Image.open(buf))
+
+                elif tool_name == "sweep_tx_antennas":
+                    response += "Swept transmit antenna configurations and plotted BER curves.\n"
+                    fig = plot_antenna_sweep(sim_result["results"])
                     buf = io.BytesIO()
                     fig.savefig(buf, format='png')
                     buf.seek(0)

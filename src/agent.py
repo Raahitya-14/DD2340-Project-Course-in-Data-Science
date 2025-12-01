@@ -117,8 +117,13 @@ Guidelines:
         if structured_hint:
             messages.append({"role": "user", "content": structured_hint})
         toolset = self.available_tools
-        if decomposition.get("task_type") == "multi_tx_optimization":
+        task_type = decomposition.get("task_type")
+        if task_type == "multi_tx_optimization":
             preferred_tool = next((t for t in self.available_tools if t["name"] == "simulate_multi_radio_map"), None)
+            if preferred_tool:
+                toolset = [preferred_tool]
+        elif task_type == "antenna_sweep":
+            preferred_tool = next((t for t in self.available_tools if t["name"] == "sweep_tx_antennas"), None)
             if preferred_tool:
                 toolset = [preferred_tool]
 

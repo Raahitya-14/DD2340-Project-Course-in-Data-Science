@@ -92,20 +92,24 @@ class TaskDecomposer:
             lines.append("- Detailed instructions:")
             lines.extend([f"  * {inst}" for inst in instructions])
 
-        if decomposition.get("task_type") == "multi_tx_optimization":
+        task_type = decomposition.get("task_type")
+        if task_type == "multi_tx_optimization":
             lines.append("- TOOL: Use simulate_multi_radio_map with the transmitter list above.")
             if "rx_position" in parameters:
                 lines.append(f"- RECEIVER_HINT: Use receiver position {parameters['rx_position']} unless user specifies otherwise.")
+        elif task_type == "antenna_sweep":
+            lines.append("- TOOL: Use sweep_tx_antennas to evaluate BER vs. TX antenna counts.")
 
         return "\n".join(lines)
 
     # -------------------------- helpers --------------------------
 
     def _classify_task(self, text: str) -> str:
+        # Prefer antenna sweeps for MIMO antenna-count optimization phrasing
+        if ("antenna" in text and any(word in text for word in ["sweep", "vary", "different", "number"])) or ("massive mimo" in text and "antenna" in text):
+            return "antenna_sweep"
         if any(word in text for word in ["optimize", "optimal", "placement"]) and "transmit" in text:
             return "multi_tx_optimization"
-        if any(word in text for word in ["sweep", "vary", "different"]) and "antenna" in text:
-            return "antenna_sweep"
         if "mimo" in text or "antenna" in text and "compare" in text:
             return "mimo_comparison"
         if any(word in text for word in ["coverage", "radio map", "radiomap", "path gain", "sinr"]):

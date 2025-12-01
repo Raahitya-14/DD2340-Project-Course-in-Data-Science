@@ -93,3 +93,19 @@ def save_plot(fig, filename, output_dir='outputs'):
     filepath = os.path.join(output_dir, filename)
     fig.savefig(filepath)
     return filepath
+
+
+def plot_antenna_sweep(results):
+    """Plot BER vs SNR for each TX antenna configuration."""
+    fig = plt.figure(figsize=(8, 6))
+    for config_name, data in results.items():
+        snrs = sorted([int(k) if isinstance(k, str) else k for k in data["ber"].keys()])
+        bers = [data["ber"][snr] if snr in data["ber"] else data["ber"][str(snr)] for snr in snrs]
+        plt.semilogy(snrs, bers, marker='o', label=config_name)
+    plt.xlabel("SNR (dB)")
+    plt.ylabel("BER")
+    plt.grid(True, which="both")
+    plt.legend(title="TX x RX")
+    plt.title("Transmit Antenna Sweep")
+    plt.tight_layout()
+    return fig
